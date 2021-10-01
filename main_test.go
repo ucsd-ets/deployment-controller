@@ -54,6 +54,10 @@ func TestCanarayResponse(t *testing.T) {
 		Key:        "a",
 		Value:      "a",
 		Expiration: ti.Add(time.Hour * 48).Format(time.RFC3339),
+		AllCookies: [2]map[string]string{
+			{"Key": "a", "Value": "a"},
+			{"Key": "b", "Value": "b"},
+		},
 	}
 
 	if !cmp.Equal(got, success) {
@@ -65,12 +69,10 @@ func TestCanarayResponse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed CanaryResponse %v", err)
 	}
-	fail := CookieResponse{
-		Key:        "b",
-		Value:      "b",
-		Expiration: ti.Add(time.Hour * 48).Format(time.RFC3339),
-	}
-	if !cmp.Equal(got, fail) {
-		t.Fatalf("Failed fail = %v %v", got, fail)
+
+	success.Key = "b"
+	success.Value = "b"
+	if !cmp.Equal(got, success) {
+		t.Fatalf("Failed fail = %v %v", got, success)
 	}
 }

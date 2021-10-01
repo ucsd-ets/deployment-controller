@@ -45,6 +45,7 @@ type CookieResponse struct {
 	Key        string
 	Value      string
 	Expiration string
+	AllCookies [2]map[string]string
 }
 
 func ReadConfig() (Config, error) {
@@ -77,17 +78,24 @@ func CanaryResponse(cookie Cookie, randGenerator *rand.Rand, timeNow time.Time) 
 	exp := timeNow.Add(time.Hour * time.Duration(expiryHours)).Format(time.RFC3339)
 
 	randNum := randGenerator.Float32()
+	allCookies := [2]map[string]string{
+		{"Key": cookie.IfSuccessful.Key, "Value": cookie.IfSuccessful.Value},
+		{"Key": cookie.IfFail.Key, "Value": cookie.IfFail.Value},
+	}
+
 	if randNum <= cookie.Percent {
 		return CookieResponse{
 			Key:        cookie.IfSuccessful.Key,
 			Value:      cookie.IfSuccessful.Value,
 			Expiration: exp,
+			AllCookies: allCookies,
 		}, nil
 	}
 	return CookieResponse{
 		Key:        cookie.IfFail.Key,
 		Value:      cookie.IfFail.Value,
 		Expiration: exp,
+		AllCookies: allCookies,
 	}, nil
 }
 
