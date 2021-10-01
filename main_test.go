@@ -58,6 +58,7 @@ func TestCanarayResponse(t *testing.T) {
 			{"Key": "a", "Value": "a"},
 			{"Key": "b", "Value": "b"},
 		},
+		CanaryPercent: .90,
 	}
 
 	if !cmp.Equal(got, success) {

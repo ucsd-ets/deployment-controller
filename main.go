@@ -42,10 +42,11 @@ type Config struct {
 }
 
 type CookieResponse struct {
-	Key        string
-	Value      string
-	Expiration string
-	AllCookies [2]map[string]string
+	Key           string
+	Value         string
+	Expiration    string
+	AllCookies    [2]map[string]string
+	CanaryPercent float32
 }
 
 func ReadConfig() (Config, error) {
@@ -83,20 +84,21 @@ func CanaryResponse(cookie Cookie, randGenerator *rand.Rand, timeNow time.Time) 
 		{"Key": cookie.IfFail.Key, "Value": cookie.IfFail.Value},
 	}
 
-	if randNum <= cookie.Percent {
-		return CookieResponse{
-			Key:        cookie.IfSuccessful.Key,
-			Value:      cookie.IfSuccessful.Value,
-			Expiration: exp,
-			AllCookies: allCookies,
-		}, nil
+	responseCookie := CookieResponse{
+		Key:           cookie.IfSuccessful.Key,
+		Value:         cookie.IfSuccessful.Value,
+		Expiration:    exp,
+		AllCookies:    allCookies,
+		CanaryPercent: cookie.Percent,
 	}
-	return CookieResponse{
-		Key:        cookie.IfFail.Key,
-		Value:      cookie.IfFail.Value,
-		Expiration: exp,
-		AllCookies: allCookies,
-	}, nil
+
+	if randNum <= cookie.Percent {
+		return responseCookie, nil
+	}
+
+	responseCookie.Key = cookie.IfFail.Key
+	responseCookie.Value = cookie.IfFail.Value
+	return responseCookie, nil
 }
 
 func respondWithError(w http.ResponseWriter, status int, msg string) {
