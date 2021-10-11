@@ -1,9 +1,7 @@
 package main
 
 import (
-	"math/rand"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -38,42 +36,4 @@ func TestReadConfig(t *testing.T) {
 		t.Fatalf("Failed equality to test = %v %v", config, shouldEqual)
 	}
 
-}
-
-func TestCanarayResponse(t *testing.T) {
-	seed := rand.NewSource(1)
-	r := rand.New(seed)
-	ti := time.Date(2021, 1, 1, 1, 1, 1, 1, time.UTC)
-	got, err := CanaryResponse(cookie, r, ti)
-	if err != nil {
-		t.Fatalf("Failed CanaryResponse %v", err)
-	}
-
-	// the first response should be pass
-	success := CookieResponse{
-		Key:        "a",
-		Value:      "a",
-		Expiration: ti.Add(time.Hour * 48).Format(time.RFC3339),
-		AllCookies: [2]map[string]string{
-			{"Key": "a", "Value": "a"},
-			{"Key": "b", "Value": "b"},
-		},
-		CanaryPercent: .90,
-	}
-
-	if !cmp.Equal(got, success) {
-		t.Fatalf("Failed success = %v %v", got, success)
-	}
-
-	// The next response should be a fail
-	got, err = CanaryResponse(cookie, r, ti)
-	if err != nil {
-		t.Fatalf("Failed CanaryResponse %v", err)
-	}
-
-	success.Key = "b"
-	success.Value = "b"
-	if !cmp.Equal(got, success) {
-		t.Fatalf("Failed fail = %v %v", got, success)
-	}
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -34,6 +33,7 @@ type Cookie struct {
 	CookieName   string   `yaml:"cookieName"`
 	IfSuccessful KeyValue `yaml:"ifSuccessful"`
 	IfFail       KeyValue `yaml:"ifFail"`
+	Disable      bool     `yaml:"disable"`
 }
 
 type Config struct {
@@ -47,6 +47,7 @@ type CookieResponse struct {
 	Expiration    string
 	AllCookies    [2]map[string]string
 	CanaryPercent float32
+	Disable       bool
 }
 
 func ReadConfig() (Config, error) {
@@ -69,7 +70,7 @@ func ReadConfig() (Config, error) {
 	return config, nil
 }
 
-func CanaryResponse(cookie Cookie, randGenerator *rand.Rand, timeNow time.Time) (CookieResponse, error) {
+func GetCookieResponse(cookie Cookie, timeNow time.Time, successCookieType bool) (CookieResponse, error) {
 
 	hours := strings.TrimSuffix(cookie.Expiration, "h")
 	expiryHours, err := strconv.Atoi(hours)
@@ -78,7 +79,6 @@ func CanaryResponse(cookie Cookie, randGenerator *rand.Rand, timeNow time.Time) 
 	}
 	exp := timeNow.Add(time.Hour * time.Duration(expiryHours)).Format(time.RFC3339)
 
-	randNum := randGenerator.Float32()
 	allCookies := [2]map[string]string{
 		{"Key": cookie.IfSuccessful.Key, "Value": cookie.IfSuccessful.Value},
 		{"Key": cookie.IfFail.Key, "Value": cookie.IfFail.Value},
@@ -90,15 +90,62 @@ func CanaryResponse(cookie Cookie, randGenerator *rand.Rand, timeNow time.Time) 
 		Expiration:    exp,
 		AllCookies:    allCookies,
 		CanaryPercent: cookie.Percent,
+		Disable:       cookie.Disable,
 	}
 
-	if randNum <= cookie.Percent {
+	if successCookieType {
 		return responseCookie, nil
 	}
 
 	responseCookie.Key = cookie.IfFail.Key
 	responseCookie.Value = cookie.IfFail.Value
 	return responseCookie, nil
+}
+
+func GetCanaryCookie(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	appName := vars["app"]
+
+	config, err := ReadConfig()
+	if err != nil {
+		log.Println(err)
+		respondWithError(w, http.StatusInternalServerError, "Could not read config file!")
+		return
+	}
+
+	for _, cookie := range config.Cookies {
+		if cookie.AppName == appName {
+			seed := rand.NewSource(time.Now().UnixNano())
+			randGen := rand.New(seed)
+			randNum := randGen.Float32()
+			timeNow := time.Now()
+
+			// generate the cookie response
+			var cookieResponse CookieResponse
+			if randNum < cookie.Percent {
+				cookieResponse, err = GetCookieResponse(cookie, timeNow, true)
+			} else {
+				cookieResponse, err = GetCookieResponse(cookie, timeNow, false)
+			}
+			if err != nil {
+				respondWithError(w, http.StatusInternalServerError, "Could not get canary cookie!")
+			}
+
+			// convert cookie response to json
+			cookieJson, err := json.Marshal(cookieResponse)
+			if err != nil {
+				respondWithError(w, http.StatusInternalServerError, "Could not read cookie data!")
+				return
+			}
+
+			respondJSON(w, cookieJson)
+			return
+		}
+	}
+
+	errMsg := fmt.Sprintf("Could not find application %v", appName)
+	log.Println(errMsg)
+	respondWithError(w, http.StatusInternalServerError, errMsg)
 }
 
 func respondWithError(w http.ResponseWriter, status int, msg string) {
@@ -111,61 +158,48 @@ func respondJSON(w http.ResponseWriter, jdata []byte) {
 	w.Write(jdata)
 }
 
-func decodeAppName(req *http.Request) (string, error) {
-	decoder := json.NewDecoder(req.Body)
+func GetCookieByType(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	appName := vars["app"]
+	cookieType := vars["cookie-type"]
 
-	var s ServerRequest
-	err := decoder.Decode(&s)
-	if err != nil {
-		return "", err
-	}
-	if s.App == "" {
-		return "", errors.New("must specify key = 'app'")
-	}
-	return s.App, nil
-}
-
-func serveCookie(w http.ResponseWriter, req *http.Request) {
-	appName, err := decodeAppName(req)
-	if err != nil {
-		log.Printf("Decode appName error = %v", err)
-		respondWithError(w, http.StatusBadRequest, "Could not read PUT json. Make sure you PUT a json with {app: <app_name>}")
-		return
-	}
 	config, err := ReadConfig()
 	if err != nil {
 		log.Println(err)
 		respondWithError(w, http.StatusInternalServerError, "Could not read config file!")
 		return
 	}
+
 	for _, cookie := range config.Cookies {
-		if cookie.AppName == appName {
-			seed := rand.NewSource(time.Now().UnixNano())
-			randGen := rand.New(seed)
-			timeNow := time.Now()
-			cookieResponse, err := CanaryResponse(cookie, randGen, timeNow)
+		if appName == cookie.AppName {
+			var cookieResponse CookieResponse
+			if cookieType == "success" {
+				cookieResponse, err = GetCookieResponse(cookie, time.Now(), true)
+			} else {
+				cookieResponse, err = GetCookieResponse(cookie, time.Now(), false)
+			}
 			if err != nil {
-				respondWithError(w, http.StatusInternalServerError, "Canary error!")
+				log.Println(err)
+				respondWithError(w, http.StatusInternalServerError, "Could not process request!")
 			}
 
-			cookieJson, err := json.Marshal(cookieResponse)
+			kvJson, err := json.Marshal(cookieResponse)
 			if err != nil {
-				respondWithError(w, http.StatusInternalServerError, "Could not read cookie data!")
-				return
+				log.Println(err)
+				respondWithError(w, http.StatusInternalServerError, "Could not process request!")
 			}
-			respondJSON(w, cookieJson)
+			respondJSON(w, kvJson)
 			return
 		}
 	}
-	errMsg := fmt.Sprintf("Could not application %v", appName)
-	log.Println(errMsg)
-	respondWithError(w, http.StatusInternalServerError, errMsg)
+
+	respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Could not find app = %v", appName))
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Do stuff here
-		log.Println(r.Method, r.RequestURI, r.Body)
+		log.Println(r.Method, r.RequestURI)
 		// Call the next handler, which can be another middleware in the chain, or the final handler.
 		next.ServeHTTP(w, r)
 	})
@@ -178,7 +212,16 @@ func main() {
 	}
 	router := mux.NewRouter()
 	router.Use(loggingMiddleware)
-	router.HandleFunc("/", serveCookie).Methods("PUT")
+	router.Path("/").
+		Queries("cookie-type", "{cookie-type:success|fail}", "app", "{app}").
+		Methods("GET").
+		HandlerFunc(GetCookieByType)
+
+	router.Path("/").
+		Queries("app", "{app}").
+		Methods("GET").
+		HandlerFunc(GetCanaryCookie)
+
 	host := ":" + strconv.Itoa(config.Port)
 	log.Println(fmt.Sprintf("Starting cookie-setter server on %v", host))
 	http.ListenAndServe(host, router)
