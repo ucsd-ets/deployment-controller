@@ -241,18 +241,17 @@ func main() {
 	}
 	router := mux.NewRouter()
 	router.Use(loggingMiddleware)
-	router.Path("/").
-		Queries("cookie-type", "{cookie-type:success|fail}", "app", "{app}").
+	router.Path("/apps/{app}").
+		Queries("cookie-type", "{cookie-type:success|fail}").
 		Methods("GET").
 		HandlerFunc(GetCookieByType)
 
-	router.Path("/").
-		Queries("app", "{app}", "views", "{views}").
+	router.Path("/apps/{app}").
+		Queries("views", "{views}").
 		Methods("GET").
 		HandlerFunc(GetViews)
 
-	router.Path("/").
-		Queries("app", "{app}").
+	router.Path("/apps/{app}").
 		Methods("GET").
 		HandlerFunc(GetCanaryCookie)
 
