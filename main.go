@@ -52,7 +52,7 @@ type CookieResponse struct {
 
 func ReadConfig() (Config, error) {
 	// set path, use /workspaces/.. if unspecified
-	configPath := os.Getenv("COOKIE_SETTER_CONFIG_PATH")
+	configPath := os.Getenv("APP_CONFIG_PATH")
 	if configPath == "" {
 		configPath = "/workspaces/deployment-controller/deployment-controller.yaml"
 	}
