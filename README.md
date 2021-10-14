@@ -4,7 +4,7 @@ Microservice for getting cookie values based off a config file based off canary 
 
 ## Usage
 
-Add an app to `cookie-setter.yaml`. Specify the `percent` of traffic you want to receive the `ifSuccessful` cookie vs. the `ifFail` cookie.
+Add an app to `deployment-controller.yaml`. Specify the `percent` of traffic you want to receive the `ifSuccessful` cookie vs. the `ifFail` cookie.
 
 For example,
 

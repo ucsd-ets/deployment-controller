@@ -8,5 +8,8 @@ cookies:
   ifFail:
     key: b
     value: b
-  disable: true
+  disable:
+    all: false
+    success: false
+    fail: false
 port: 8080

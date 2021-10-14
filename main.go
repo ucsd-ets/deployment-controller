@@ -54,7 +54,7 @@ func ReadConfig() (Config, error) {
 	// set path, use /workspaces/.. if unspecified
 	configPath := os.Getenv("COOKIE_SETTER_CONFIG_PATH")
 	if configPath == "" {
-		configPath = "/workspaces/cookie-setter/cookie-setter.yaml"
+		configPath = "/workspaces/deployment-controller/deployment-controller.yaml"
 	}
 	config := Config{}
 	configYaml, err := ioutil.ReadFile(configPath)
@@ -223,6 +223,6 @@ func main() {
 		HandlerFunc(GetCanaryCookie)
 
 	host := ":" + strconv.Itoa(config.Port)
-	log.Println(fmt.Sprintf("Starting cookie-setter server on %v", host))
+	log.Println(fmt.Sprintf("Starting deployment-controller server on %v", host))
 	http.ListenAndServe(host, router)
 }

@@ -15,6 +15,6 @@ RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/
 # [Optional] Uncomment the next line to use go get to install anything else you need
 RUN go get -x github.com/google/go-cmp/cmp gopkg.in/yaml.v2 github.com/gorilla/mux
 
-COPY . /workspaces/cookie-setter
+COPY . /workspaces/deployment-controller
 # [Optional] Uncomment this line to install global node packages.
 # RUN su vscode -c "source /usr/local/share/nvm/nvm.sh && npm install -g <your-package-here>" 2>&1

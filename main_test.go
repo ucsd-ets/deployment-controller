@@ -14,6 +14,13 @@ var cookie = Cookie{
 	IfFail:       KeyValue{Key: "b", Value: "b"},
 }
 
+func executeRequest(req *http.Request) *httptest.ResponseRecorder {
+    rr := httptest.NewRecorder()
+    a.Router.ServeHTTP(rr, req)
+
+    return rr
+}
+
 func TestReadConfig(t *testing.T) {
 	config, err := ReadConfig()
 
@@ -36,4 +43,15 @@ func TestReadConfig(t *testing.T) {
 		t.Fatalf("Failed equality to test = %v %v", config, shouldEqual)
 	}
 
+}
+
+func TestIndex(t *testing.T) {
+    req, _ := http.NewRequest("GET", "/products", nil)
+    response := executeRequest(req)
+
+    checkResponseCode(t, http.StatusOK, response.Code)
+
+    if body := response.Body.String(); body != "[]" {
+        t.Errorf("Expected an empty array. Got %s", body)
+    }
 }
