@@ -16,10 +16,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type ServerRequest struct {
-	App string `json:"app"`
-}
-
 type KeyValue struct {
 	Key   string `yaml:"key"`
 	Value string `yaml:"value"`
@@ -27,18 +23,27 @@ type KeyValue struct {
 
 // cookie data from config file
 type Cookie struct {
-	AppName      string   `yaml:"appName"`
-	Expiration   string   `yaml:"expiration"`
-	Percent      float32  `yaml:"percent"`
-	CookieName   string   `yaml:"cookieName"`
-	IfSuccessful KeyValue `yaml:"ifSuccessful"`
-	IfFail       KeyValue `yaml:"ifFail"`
-	Disable      bool     `yaml:"disable"`
+	Expiration    string   `yaml:"expiration"`
+	CanaryPercent float32  `yaml:"canaryPercent"`
+	IfSuccessful  KeyValue `yaml:"ifSuccessful"`
+	IfFail        KeyValue `yaml:"ifFail"`
+}
+
+type View struct {
+	ShowSuccess bool `yaml:"showSuccess"`
+	ShowFail    bool `yaml:"showFail"`
+}
+
+type App struct {
+	Name       string `yaml:"appName"`
+	Disable    bool   `yaml:"disable"`
+	CookieInfo Cookie `yaml:"cookieInfo"`
+	View       View   `yaml:"view"`
 }
 
 type Config struct {
-	Cookies []Cookie `yaml:"cookies"`
-	Port    int      `yaml:"port"`
+	Apps []App `yaml:"apps"`
+	Port int   `yaml:"port"`
 }
 
 type CookieResponse struct {
@@ -89,8 +94,7 @@ func GetCookieResponse(cookie Cookie, timeNow time.Time, successCookieType bool)
 		Value:         cookie.IfSuccessful.Value,
 		Expiration:    exp,
 		AllCookies:    allCookies,
-		CanaryPercent: cookie.Percent,
-		Disable:       cookie.Disable,
+		CanaryPercent: cookie.CanaryPercent,
 	}
 
 	if successCookieType {
@@ -113,8 +117,8 @@ func GetCanaryCookie(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	for _, cookie := range config.Cookies {
-		if cookie.AppName == appName {
+	for _, app := range config.Apps {
+		if app.Name == appName {
 			seed := rand.NewSource(time.Now().UnixNano())
 			randGen := rand.New(seed)
 			randNum := randGen.Float32()
@@ -122,10 +126,10 @@ func GetCanaryCookie(w http.ResponseWriter, req *http.Request) {
 
 			// generate the cookie response
 			var cookieResponse CookieResponse
-			if randNum < cookie.Percent {
-				cookieResponse, err = GetCookieResponse(cookie, timeNow, true)
+			if randNum < app.CookieInfo.CanaryPercent {
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, timeNow, true)
 			} else {
-				cookieResponse, err = GetCookieResponse(cookie, timeNow, false)
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, timeNow, false)
 			}
 			if err != nil {
 				respondWithError(w, http.StatusInternalServerError, "Could not get canary cookie!")
@@ -170,13 +174,13 @@ func GetCookieByType(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	for _, cookie := range config.Cookies {
-		if appName == cookie.AppName {
+	for _, app := range config.Apps {
+		if appName == app.Name {
 			var cookieResponse CookieResponse
 			if cookieType == "success" {
-				cookieResponse, err = GetCookieResponse(cookie, time.Now(), true)
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, time.Now(), true)
 			} else {
-				cookieResponse, err = GetCookieResponse(cookie, time.Now(), false)
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, time.Now(), false)
 			}
 			if err != nil {
 				log.Println(err)
