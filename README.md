@@ -1,6 +1,9 @@
-# Cookie Setter
+# Deployment Controller
 
-Microservice for getting cookie values based off a config file based off canary weighting
+Microservice for:
+
+1. Getting cookie values based off a config file based off canary weighting
+2. Disabling/enabling views on the client
 
 ## Usage
 

@@ -200,6 +200,31 @@ func GetCookieByType(w http.ResponseWriter, req *http.Request) {
 	respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Could not find app = %v", appName))
 }
 
+func GetViews(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	appName := vars["app"]
+
+	config, err := ReadConfig()
+	if err != nil {
+		log.Println(err)
+		respondWithError(w, http.StatusInternalServerError, "Could not process request!")
+	}
+
+	for _, app := range config.Apps {
+		if appName == app.Name {
+			viewResponse, err := json.Marshal(app.View)
+			if err != nil {
+				log.Println(err)
+				respondWithError(w, http.StatusInternalServerError, "Could not process request!")
+			}
+
+			respondJSON(w, viewResponse)
+			return
+		}
+	}
+	respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Could not find app = %v", appName))
+}
+
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Do stuff here
@@ -220,6 +245,11 @@ func main() {
 		Queries("cookie-type", "{cookie-type:success|fail}", "app", "{app}").
 		Methods("GET").
 		HandlerFunc(GetCookieByType)
+
+	router.Path("/").
+		Queries("app", "{app}", "views", "{views}").
+		Methods("GET").
+		HandlerFunc(GetViews)
 
 	router.Path("/").
 		Queries("app", "{app}").
