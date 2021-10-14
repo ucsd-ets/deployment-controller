@@ -1,10 +1,13 @@
-# Cookie Setter
+# Deployment Controller
 
-Microservice for getting cookie values based off a config file based off canary weighting
+Microservice for:
+
+1. Getting cookie values based off a config file based off canary weighting
+2. Disabling/enabling views on the client
 
 ## Usage
 
-Add an app to `cookie-setter.yaml`. Specify the `percent` of traffic you want to receive the `ifSuccessful` cookie vs. the `ifFail` cookie.
+Add an app to `deployment-controller.yaml`. Specify the `percent` of traffic you want to receive the `ifSuccessful` cookie vs. the `ifFail` cookie.
 
 For example,
 

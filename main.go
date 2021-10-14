@@ -16,10 +16,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type ServerRequest struct {
-	App string `json:"app"`
-}
-
 type KeyValue struct {
 	Key   string `yaml:"key"`
 	Value string `yaml:"value"`
@@ -27,18 +23,27 @@ type KeyValue struct {
 
 // cookie data from config file
 type Cookie struct {
-	AppName      string   `yaml:"appName"`
-	Expiration   string   `yaml:"expiration"`
-	Percent      float32  `yaml:"percent"`
-	CookieName   string   `yaml:"cookieName"`
-	IfSuccessful KeyValue `yaml:"ifSuccessful"`
-	IfFail       KeyValue `yaml:"ifFail"`
-	Disable      bool     `yaml:"disable"`
+	Expiration    string   `yaml:"expiration"`
+	CanaryPercent float32  `yaml:"canaryPercent"`
+	IfSuccessful  KeyValue `yaml:"ifSuccessful"`
+	IfFail        KeyValue `yaml:"ifFail"`
+}
+
+type View struct {
+	ShowSuccess bool `yaml:"showSuccess"`
+	ShowFail    bool `yaml:"showFail"`
+}
+
+type App struct {
+	Name       string `yaml:"appName"`
+	Disable    bool   `yaml:"disable"`
+	CookieInfo Cookie `yaml:"cookieInfo"`
+	View       View   `yaml:"view"`
 }
 
 type Config struct {
-	Cookies []Cookie `yaml:"cookies"`
-	Port    int      `yaml:"port"`
+	Apps []App `yaml:"apps"`
+	Port int   `yaml:"port"`
 }
 
 type CookieResponse struct {
@@ -52,9 +57,9 @@ type CookieResponse struct {
 
 func ReadConfig() (Config, error) {
 	// set path, use /workspaces/.. if unspecified
-	configPath := os.Getenv("COOKIE_SETTER_CONFIG_PATH")
+	configPath := os.Getenv("APP_CONFIG_PATH")
 	if configPath == "" {
-		configPath = "/workspaces/cookie-setter/cookie-setter.yaml"
+		configPath = "/workspaces/deployment-controller/deployment-controller.yaml"
 	}
 	config := Config{}
 	configYaml, err := ioutil.ReadFile(configPath)
@@ -89,8 +94,7 @@ func GetCookieResponse(cookie Cookie, timeNow time.Time, successCookieType bool)
 		Value:         cookie.IfSuccessful.Value,
 		Expiration:    exp,
 		AllCookies:    allCookies,
-		CanaryPercent: cookie.Percent,
-		Disable:       cookie.Disable,
+		CanaryPercent: cookie.CanaryPercent,
 	}
 
 	if successCookieType {
@@ -113,8 +117,8 @@ func GetCanaryCookie(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	for _, cookie := range config.Cookies {
-		if cookie.AppName == appName {
+	for _, app := range config.Apps {
+		if app.Name == appName {
 			seed := rand.NewSource(time.Now().UnixNano())
 			randGen := rand.New(seed)
 			randNum := randGen.Float32()
@@ -122,10 +126,10 @@ func GetCanaryCookie(w http.ResponseWriter, req *http.Request) {
 
 			// generate the cookie response
 			var cookieResponse CookieResponse
-			if randNum < cookie.Percent {
-				cookieResponse, err = GetCookieResponse(cookie, timeNow, true)
+			if randNum < app.CookieInfo.CanaryPercent {
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, timeNow, true)
 			} else {
-				cookieResponse, err = GetCookieResponse(cookie, timeNow, false)
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, timeNow, false)
 			}
 			if err != nil {
 				respondWithError(w, http.StatusInternalServerError, "Could not get canary cookie!")
@@ -170,13 +174,13 @@ func GetCookieByType(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	for _, cookie := range config.Cookies {
-		if appName == cookie.AppName {
+	for _, app := range config.Apps {
+		if appName == app.Name {
 			var cookieResponse CookieResponse
 			if cookieType == "success" {
-				cookieResponse, err = GetCookieResponse(cookie, time.Now(), true)
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, time.Now(), true)
 			} else {
-				cookieResponse, err = GetCookieResponse(cookie, time.Now(), false)
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, time.Now(), false)
 			}
 			if err != nil {
 				log.Println(err)
@@ -196,6 +200,31 @@ func GetCookieByType(w http.ResponseWriter, req *http.Request) {
 	respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Could not find app = %v", appName))
 }
 
+func GetViews(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	appName := vars["app"]
+
+	config, err := ReadConfig()
+	if err != nil {
+		log.Println(err)
+		respondWithError(w, http.StatusInternalServerError, "Could not process request!")
+	}
+
+	for _, app := range config.Apps {
+		if appName == app.Name {
+			viewResponse, err := json.Marshal(app.View)
+			if err != nil {
+				log.Println(err)
+				respondWithError(w, http.StatusInternalServerError, "Could not process request!")
+			}
+
+			respondJSON(w, viewResponse)
+			return
+		}
+	}
+	respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Could not find app = %v", appName))
+}
+
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Do stuff here
@@ -212,17 +241,21 @@ func main() {
 	}
 	router := mux.NewRouter()
 	router.Use(loggingMiddleware)
-	router.Path("/").
-		Queries("cookie-type", "{cookie-type:success|fail}", "app", "{app}").
+	router.Path("/apps/{app}").
+		Queries("cookie-type", "{cookie-type:success|fail}").
 		Methods("GET").
 		HandlerFunc(GetCookieByType)
 
-	router.Path("/").
-		Queries("app", "{app}").
+	router.Path("/apps/{app}").
+		Queries("views", "{views}").
+		Methods("GET").
+		HandlerFunc(GetViews)
+
+	router.Path("/apps/{app}").
 		Methods("GET").
 		HandlerFunc(GetCanaryCookie)
 
 	host := ":" + strconv.Itoa(config.Port)
-	log.Println(fmt.Sprintf("Starting cookie-setter server on %v", host))
+	log.Println(fmt.Sprintf("Starting deployment-controller server on %v", host))
 	http.ListenAndServe(host, router)
 }
