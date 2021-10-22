@@ -34,11 +34,16 @@ type View struct {
 	ShowFail    bool `yaml:"showFail"`
 }
 
+type Logging struct {
+	Disable bool `yaml:"disable"`
+}
+
 type App struct {
-	Name       string `yaml:"appName"`
-	Disable    bool   `yaml:"disable"`
-	CookieInfo Cookie `yaml:"cookieInfo"`
-	View       View   `yaml:"view"`
+	Name       string  `yaml:"appName"`
+	Disable    bool    `yaml:"disable"`
+	CookieInfo Cookie  `yaml:"cookieInfo"`
+	View       View    `yaml:"view"`
+	Logging    Logging `yaml:"logging"`
 }
 
 type Config struct {
@@ -225,6 +230,30 @@ func GetViews(w http.ResponseWriter, req *http.Request) {
 	respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Could not find app = %v", appName))
 }
 
+func GetLogging(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	appName := vars["app"]
+
+	config, err := ReadConfig()
+	if err != nil {
+		log.Println(err)
+		respondWithError(w, http.StatusInternalServerError, "Could not process request!")
+	}
+	for _, app := range config.Apps {
+		if appName == app.Name {
+			loggingResponse, err := json.Marshal(app.Logging)
+			if err != nil {
+				log.Println(err)
+				respondWithError(w, http.StatusInternalServerError, "Could not process request!")
+			}
+
+			respondJSON(w, loggingResponse)
+			return
+		}
+	}
+	respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Could not find app = %v", appName))
+}
+
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Do stuff here
@@ -246,14 +275,17 @@ func main() {
 		Methods("GET").
 		HandlerFunc(GetCookieByType)
 
-	router.Path("/apps/{app}").
-		Queries("views", "{views}").
+	router.Path("/apps/{app}/views").
 		Methods("GET").
 		HandlerFunc(GetViews)
 
 	router.Path("/apps/{app}").
 		Methods("GET").
 		HandlerFunc(GetCanaryCookie)
+
+	router.Path("/apps/{app}/logging").
+		Methods("GET").
+		HandlerFunc(GetLogging)
 
 	host := ":" + strconv.Itoa(config.Port)
 	log.Println(fmt.Sprintf("Starting deployment-controller server on %v", host))

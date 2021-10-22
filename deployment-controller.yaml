@@ -13,4 +13,6 @@ apps:
   view: # related to showing the UI elements to users (in this case, the stationary banner on datahub)
     showSuccess: true
     showFail: true
+  logging:
+    disable: false
 port: 8080
