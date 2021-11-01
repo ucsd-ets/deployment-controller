@@ -11,10 +11,8 @@ spec:
       {{- include "deployment-controller.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        checksum/config: {{ tpl (toYaml .Values) . | sha256sum }}
       labels:
         {{- include "deployment-controller.selectorLabels" . | nindent 8 }}
     spec:
@@ -22,6 +20,7 @@ spec:
       - name: config
         configMap:
           name: {{ include "deployment-controller.fullname" . }}
+          defaultMode: 0777
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -35,18 +34,15 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+          - go
+          args:
+          - run
+          - /workspaces/deployment-controller/main.go
           ports:
             - name: http
               containerPort: {{ .Values.image.containerPort }}
               protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
