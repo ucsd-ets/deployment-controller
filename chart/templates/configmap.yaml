@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "deployment-controller.fullname" . }}
+  labels:
+  {{- include "deployment-controller.labels" . | nindent 4 }}
+data:
+  deployment-controller.yaml: |
+    apps:
+    - appName: jupyterhub
+      disable: false
+      cookieInfo:
+        expiration: 48h
+        canaryPercent: .90
+        ifSuccessful: # less than percent
+          key: a
+          value: a
+        ifFail:
+          key: b
+          value: b
+      view: # related to showing the UI elements to users (in this case, the stationary banner on datahub)
+        showSuccess: true
+        showFail: true
+      logging:
+        disable: false
+    port: 8080
