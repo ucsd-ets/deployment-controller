@@ -26,7 +26,6 @@ type Cookie struct {
 	Expiration    string   `yaml:"expiration"`
 	CanaryPercent float32  `yaml:"canaryPercent"`
 	IfSuccessful  KeyValue `yaml:"ifSuccessful"`
-	IfFail        KeyValue `yaml:"ifFail"`
 }
 
 type View struct {
@@ -40,7 +39,7 @@ type Logging struct {
 
 type App struct {
 	Name       string  `yaml:"appName"`
-	Disable    bool    `yaml:"disable"`
+	Mode       string  `yaml:"mode"`
 	CookieInfo Cookie  `yaml:"cookieInfo"`
 	View       View    `yaml:"view"`
 	Logging    Logging `yaml:"logging"`
@@ -51,13 +50,22 @@ type Config struct {
 	Port int   `yaml:"port"`
 }
 
-type CookieResponse struct {
+type AppResponse struct {
 	Key           string
 	Value         string
 	Expiration    string
-	AllCookies    [2]map[string]string
 	CanaryPercent float32
-	Disable       bool
+	Mode          string
+}
+
+// https://stackoverflow.com/questions/15323767/does-go-have-if-x-in-construct-similar-to-python
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
 
 func ReadConfig() (Config, error) {
@@ -80,34 +88,29 @@ func ReadConfig() (Config, error) {
 	return config, nil
 }
 
-func GetCookieResponse(cookie Cookie, timeNow time.Time, successCookieType bool) (CookieResponse, error) {
+func GetAppResponse(cookie Cookie, timeNow time.Time, successCookieType bool, mode string) (AppResponse, error) {
 
 	hours := strings.TrimSuffix(cookie.Expiration, "h")
 	expiryHours, err := strconv.Atoi(hours)
 	if err != nil {
-		return CookieResponse{}, err
+		return AppResponse{}, err
 	}
 	exp := timeNow.Add(time.Hour * time.Duration(expiryHours)).Format(time.RFC3339)
 
-	allCookies := [2]map[string]string{
-		{"Key": cookie.IfSuccessful.Key, "Value": cookie.IfSuccessful.Value},
-		{"Key": cookie.IfFail.Key, "Value": cookie.IfFail.Value},
-	}
-
-	responseCookie := CookieResponse{
+	responseCookie := AppResponse{
 		Key:           cookie.IfSuccessful.Key,
 		Value:         cookie.IfSuccessful.Value,
 		Expiration:    exp,
-		AllCookies:    allCookies,
 		CanaryPercent: cookie.CanaryPercent,
+		Mode:          mode,
 	}
 
 	if successCookieType {
 		return responseCookie, nil
 	}
 
-	responseCookie.Key = cookie.IfFail.Key
-	responseCookie.Value = cookie.IfFail.Value
+	responseCookie.Key = ""
+	responseCookie.Value = ""
 	return responseCookie, nil
 }
 
@@ -130,11 +133,11 @@ func GetCanaryCookie(w http.ResponseWriter, req *http.Request) {
 			timeNow := time.Now()
 
 			// generate the cookie response
-			var cookieResponse CookieResponse
+			var cookieResponse AppResponse
 			if randNum < app.CookieInfo.CanaryPercent {
-				cookieResponse, err = GetCookieResponse(app.CookieInfo, timeNow, true)
+				cookieResponse, err = GetAppResponse(app.CookieInfo, timeNow, true, app.Mode)
 			} else {
-				cookieResponse, err = GetCookieResponse(app.CookieInfo, timeNow, false)
+				cookieResponse, err = GetAppResponse(app.CookieInfo, timeNow, false, app.Mode)
 			}
 			if err != nil {
 				respondWithError(w, http.StatusInternalServerError, "Could not get canary cookie!")
@@ -181,11 +184,11 @@ func GetCookieByType(w http.ResponseWriter, req *http.Request) {
 
 	for _, app := range config.Apps {
 		if appName == app.Name {
-			var cookieResponse CookieResponse
+			var cookieResponse AppResponse
 			if cookieType == "success" {
-				cookieResponse, err = GetCookieResponse(app.CookieInfo, time.Now(), true)
+				cookieResponse, err = GetAppResponse(app.CookieInfo, time.Now(), true, app.Mode)
 			} else {
-				cookieResponse, err = GetCookieResponse(app.CookieInfo, time.Now(), false)
+				cookieResponse, err = GetAppResponse(app.CookieInfo, time.Now(), false, app.Mode)
 			}
 			if err != nil {
 				log.Println(err)

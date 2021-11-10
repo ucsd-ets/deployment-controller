@@ -1,15 +1,12 @@
 apps:
 - appName: jupyterhub
-  disable: false
+  mode: ab # ab|canary|disable
   cookieInfo:
     expiration: 48h
     canaryPercent: .90
-    ifSuccessful: # less than percent
+    ifSuccessful: # if less than canaryPercent, set this cookie key/value
       key: a
       value: a
-    ifFail:
-      key: b
-      value: b
   view: # related to showing the UI elements to users (in this case, the stationary banner on datahub)
     showSuccess: true
     showFail: true

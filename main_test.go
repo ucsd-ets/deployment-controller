@@ -11,18 +11,14 @@ func TestReadConfig(t *testing.T) {
 	shouldEqual := Config{
 		Apps: []App{
 			App{
-				Name:    "jupyterhub",
-				Disable: false,
+				Name: "jupyterhub",
+				Mode: "ab",
 				CookieInfo: Cookie{
 					Expiration:    "48h",
 					CanaryPercent: .90,
 					IfSuccessful: KeyValue{
 						Key:   "a",
 						Value: "a",
-					},
-					IfFail: KeyValue{
-						Key:   "b",
-						Value: "b",
 					},
 				},
 				View: View{
