@@ -1,0 +1,1 @@
+curl -XPUT -H "Authorization: test" -d '{"CookieInfo":{"CanaryPercent":0.9,"Expiration":"48h","IfFail":{"Key":"b","Value":"b"},"IfSuccessful":{"Key":"a","Value":"a"}},"Disable":false,"Logging":{"Disable":false},"Name":"jupyterhub","View":{"ShowFail":false,"ShowSuccess":true}}' http://localhost:8080/admin/jupyterhub
