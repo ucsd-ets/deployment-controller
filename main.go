@@ -3,53 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
-	"gopkg.in/yaml.v2"
 )
-
-type KeyValue struct {
-	Key   string `yaml:"key"`
-	Value string `yaml:"value"`
-}
-
-// cookie data from config file
-type Cookie struct {
-	Expiration    string   `yaml:"expiration"`
-	CanaryPercent float32  `yaml:"canaryPercent"`
-	IfSuccessful  KeyValue `yaml:"ifSuccessful"`
-	IfFail        KeyValue `yaml:"ifFail"`
-}
-
-type View struct {
-	ShowSuccess bool `yaml:"showSuccess"`
-	ShowFail    bool `yaml:"showFail"`
-}
-
-type Logging struct {
-	Disable bool `yaml:"disable"`
-}
-
-type App struct {
-	Name       string  `yaml:"appName"`
-	Disable    bool    `yaml:"disable"`
-	CookieInfo Cookie  `yaml:"cookieInfo"`
-	View       View    `yaml:"view"`
-	Logging    Logging `yaml:"logging"`
-}
-
-type Config struct {
-	Apps []App `yaml:"apps"`
-	Port int   `yaml:"port"`
-}
 
 type CookieResponse struct {
 	Key           string
@@ -58,26 +20,6 @@ type CookieResponse struct {
 	AllCookies    [2]map[string]string
 	CanaryPercent float32
 	Disable       bool
-}
-
-func ReadConfig() (Config, error) {
-	// set path, use /workspaces/.. if unspecified
-	configPath := os.Getenv("APP_CONFIG_PATH")
-	if configPath == "" {
-		configPath = "/workspaces/deployment-controller/deployment-controller.yaml"
-	}
-	config := Config{}
-	configYaml, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return config, err
-	}
-
-	err = yaml.Unmarshal(configYaml, &config)
-	if err != nil {
-		return config, err
-	}
-
-	return config, nil
 }
 
 func GetCookieResponse(cookie Cookie, timeNow time.Time, successCookieType bool) (CookieResponse, error) {
@@ -254,6 +196,24 @@ func GetLogging(w http.ResponseWriter, req *http.Request) {
 	respondWithError(w, http.StatusBadRequest, fmt.Sprintf("Could not find app = %v", appName))
 }
 
+func UpdateAppConfig(w http.ResponseWriter, req *http.Request) {
+	decoder := json.NewDecoder(req.Body)
+	var app App
+	if err := decoder.Decode(&app); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Could not decode app fields from body")
+		return
+	}
+
+	err := UpdateConfig(app)
+	if err != nil {
+		log.Println(err)
+		respondWithError(w, http.StatusInternalServerError, "Could not save config")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Do stuff here
@@ -268,12 +228,21 @@ func main() {
 	if err != nil {
 		log.Println(err)
 	}
-	router := mux.NewRouter()
+	router := mux.NewRouter()                            // public routes
+	protected := router.PathPrefix("/admin").Subrouter() // private
+
 	router.Use(loggingMiddleware)
+	protected.Use(loggingMiddleware)
+	protected.Use(ApiKeyAuthMiddleware)
+
 	router.Path("/apps/{app}").
 		Queries("cookie-type", "{cookie-type:success|fail}").
 		Methods("GET").
 		HandlerFunc(GetCookieByType)
+
+	protected.Path("/{app}").
+		Methods("PUT").
+		HandlerFunc(UpdateAppConfig)
 
 	router.Path("/apps/{app}/views").
 		Methods("GET").
