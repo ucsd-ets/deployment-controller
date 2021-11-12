@@ -240,10 +240,6 @@ func main() {
 		Methods("GET").
 		HandlerFunc(GetCookieByType)
 
-	protected.Path("/{app}").
-		Methods("PUT").
-		HandlerFunc(UpdateAppConfig)
-
 	router.Path("/apps/{app}/views").
 		Methods("GET").
 		HandlerFunc(GetViews)
@@ -255,6 +251,10 @@ func main() {
 	router.Path("/apps/{app}/logging").
 		Methods("GET").
 		HandlerFunc(GetLogging)
+
+	protected.Path("/{app}").
+		Methods("PUT").
+		HandlerFunc(UpdateAppConfig)
 
 	host := ":" + strconv.Itoa(config.Port)
 	log.Println(fmt.Sprintf("Starting deployment-controller server on %v", host))
