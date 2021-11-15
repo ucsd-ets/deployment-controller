@@ -59,22 +59,28 @@ tolerations: []
 
 affinity: {}
 
-deploymentControllerConfig:
-  apps:
-  - appName: jupyterhub
-    disable: false
-    cookieInfo:
-      expiration: 48h
-      canaryPercent: .80
-      ifSuccessful: # less than percent
-        key: a
-        value: a
-      ifFail:
-        key: b
-        value: b
-    view: # related to showing the UI elements to users (in this case, the stationary banner on datahub)
-      showSuccess: true
-      showFail: true
-    logging:
-      disable: false
-  port: 8080
+
+nfs:
+  # where the config file will live
+  server: its-dsmlpdev-fs01.ucsd.edu
+  path: /export/jupyterhub/deployment-controller
+
+# deploymentControllerConfig:
+#   apps:
+#   - appName: jupyterhub
+#     disable: false
+#     cookieInfo:
+#       expiration: 48h
+#       canaryPercent: .80
+#       ifSuccessful: # less than percent
+#         key: a
+#         value: a
+#       ifFail:
+#         key: b
+#         value: b
+#     view: # related to showing the UI elements to users (in this case, the stationary banner on datahub)
+#       showSuccess: true
+#       showFail: true
+#     logging:
+#       disable: false
+#   port: 8080

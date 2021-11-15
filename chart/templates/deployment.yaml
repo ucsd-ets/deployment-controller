@@ -18,9 +18,9 @@ spec:
     spec:
       volumes:
       - name: config
-        configMap:
-          name: {{ include "deployment-controller.fullname" . }}
-          defaultMode: 0777
+        nfs:
+          server: {{ .Values.nfs.server }}
+          path: {{ .Values.nfs.path }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
