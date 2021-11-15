@@ -5,11 +5,16 @@
 replicaCount: 1
 
 image:
-  repository: ucsdets/deployment-controller
+  repository: ghcr.io/ucsd-ets/deployment-controller
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "0.1.0"
+  tag: main
   containerPort: 8080
+  command:
+  - go
+  args:
+  - run
+  - ../workspaces/deployment-controller/
 
 imagePullSecrets: []
 nameOverride: ""

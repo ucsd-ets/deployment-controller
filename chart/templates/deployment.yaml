@@ -49,7 +49,7 @@ spec:
           {{- end }}
           {{- else }}
           - run
-          - /workspaces/deployment-controller/main.go
+          - ../workspaces/deployment-controller/
           {{- end }}
           ports:
             - name: http
