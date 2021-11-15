@@ -18,3 +18,4 @@ RUN go get -x github.com/google/go-cmp/cmp gopkg.in/yaml.v2 github.com/gorilla/m
 COPY . /workspaces/deployment-controller
 # [Optional] Uncomment this line to install global node packages.
 # RUN su vscode -c "source /usr/local/share/nvm/nvm.sh && npm install -g <your-package-here>" 2>&1
+WORKDIR workspaces/deployment-controller/
