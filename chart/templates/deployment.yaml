@@ -38,7 +38,7 @@ spec:
           - go
           args:
           - run
-          - /workspaces/deployment-controller/main.go
+          - ./workspaces/deployment-controller/
           ports:
             - name: http
               containerPort: {{ .Values.image.containerPort }}
