@@ -18,9 +18,9 @@ spec:
     spec:
       volumes:
       - name: config
-        nfs:
-          server: {{ .Values.nfs.server }}
-          path: {{ .Values.nfs.path }}
+        configMap:
+          name: {{ include "deployment-controller.fullname" . }}
+          defaultMode: 0777
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -35,10 +35,22 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
+          {{- if .Values.image.command }}
+          {{- with .Values.image.command }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- else }}
           - go
+          {{- end }}
           args:
+          {{- if .Values.image.args }}
+          {{- with .Values.image.args }}
+          {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- else }}
           - run
-          - ./workspaces/deployment-controller/
+          - /workspaces/deployment-controller/main.go
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ .Values.image.containerPort }}
