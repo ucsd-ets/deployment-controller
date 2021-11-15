@@ -13,7 +13,7 @@ RUN if [ "${NODE_VERSION}" != "none" ]; then su vscode -c "umask 0002 && . /usr/
 #     && apt-get -y install --no-install-recommends <your-package-list-here>
 
 # [Optional] Uncomment the next line to use go get to install anything else you need
-RUN go get -x github.com/google/go-cmp/cmp gopkg.in/yaml.v2 github.com/gorilla/mux
+RUN go get -x github.com/google/go-cmp/cmp gopkg.in/yaml.v2 github.com/gorilla/mux github.com/ghodss/yaml
 
 COPY . /workspaces/deployment-controller
 # [Optional] Uncomment this line to install global node packages.
