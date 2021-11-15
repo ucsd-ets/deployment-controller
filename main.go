@@ -22,7 +22,7 @@ type CookieResponse struct {
 	Disable       bool
 }
 
-func GetCookieResponse(cookie Cookie, timeNow time.Time, successCookieType bool) (CookieResponse, error) {
+func GetCookieResponse(cookie Cookie, timeNow time.Time, successCookieType bool, disable bool) (CookieResponse, error) {
 
 	hours := strings.TrimSuffix(cookie.Expiration, "h")
 	expiryHours, err := strconv.Atoi(hours)
@@ -42,6 +42,7 @@ func GetCookieResponse(cookie Cookie, timeNow time.Time, successCookieType bool)
 		Expiration:    exp,
 		AllCookies:    allCookies,
 		CanaryPercent: cookie.CanaryPercent,
+		Disable:       disable,
 	}
 
 	if successCookieType {
@@ -74,9 +75,9 @@ func GetCanaryCookie(w http.ResponseWriter, req *http.Request) {
 			// generate the cookie response
 			var cookieResponse CookieResponse
 			if randNum < app.CookieInfo.CanaryPercent {
-				cookieResponse, err = GetCookieResponse(app.CookieInfo, timeNow, true)
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, timeNow, true, app.Disable)
 			} else {
-				cookieResponse, err = GetCookieResponse(app.CookieInfo, timeNow, false)
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, timeNow, false, app.Disable)
 			}
 			if err != nil {
 				respondWithError(w, http.StatusInternalServerError, "Could not get canary cookie!")
@@ -125,9 +126,9 @@ func GetCookieByType(w http.ResponseWriter, req *http.Request) {
 		if appName == app.Name {
 			var cookieResponse CookieResponse
 			if cookieType == "success" {
-				cookieResponse, err = GetCookieResponse(app.CookieInfo, time.Now(), true)
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, time.Now(), true, app.Disable)
 			} else {
-				cookieResponse, err = GetCookieResponse(app.CookieInfo, time.Now(), false)
+				cookieResponse, err = GetCookieResponse(app.CookieInfo, time.Now(), false, app.Disable)
 			}
 			if err != nil {
 				log.Println(err)
