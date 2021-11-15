@@ -15,6 +15,9 @@ image:
   args:
   - run
   - ../workspaces/deployment-controller/
+  env:
+  - name: API_KEY
+    value: test
 
 imagePullSecrets: []
 nameOverride: ""
