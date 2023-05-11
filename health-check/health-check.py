@@ -50,7 +50,8 @@ cookie_names = os.getenv("cookie_names").split(";")[:-1]
 cookie_vals = os.getenv("cookie_vals").split(";")[:-1]
 url = os.getenv("url")
 
-if(run_health_check == 200):
+if(run_health_check() == 200):
     log.info("Success!")
 else:
+    log.warning("Failure. Check logs.")
     sys.exit(-5)
