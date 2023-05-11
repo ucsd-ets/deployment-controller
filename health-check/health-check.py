@@ -42,6 +42,8 @@ def run_health_check():
     
     return 200
 
+# envs are colon delimited. see cronjob-health-check.yaml in deployment-controller's tempate for how they're inserted.
+# remove empty indices with trailing semi colons from the envs
 cookie_releases = os.getenv("cookie_releases").split(";")[:-1]
 cookie_names = os.getenv("cookie_names").split(";")[:-1]
 cookie_vals = os.getenv("cookie_vals").split(";")[:-1]
