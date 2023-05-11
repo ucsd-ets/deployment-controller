@@ -1,6 +1,7 @@
 import requests
 import logging
 import os
+import sys
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -49,4 +50,7 @@ cookie_names = os.getenv("cookie_names").split(";")[:-1]
 cookie_vals = os.getenv("cookie_vals").split(";")[:-1]
 url = os.getenv("url")
 
-print(run_health_check())
+if(run_health_check == 200):
+    log.info("Success!")
+else:
+    sys.exit(-5)
