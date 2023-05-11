@@ -10,8 +10,6 @@ on:
     - cron: '22 2 * * *'
   push:
     branches: [ main ]
-    # Publish semver tags as releases.
-    tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ main ]
 
@@ -61,3 +59,12 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+      
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
+      - name: Build and push Docker image health check
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: health-check/
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: deployment-controller-health-check:latest
