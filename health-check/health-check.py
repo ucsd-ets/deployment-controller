@@ -42,9 +42,9 @@ def run_health_check():
     
     return 200
 
-cookie_releases = os.getenv("cookie_releases").split()
-cookie_names = os.getenv("cookie_names").split()
-cookie_vals = os.getenv("cookie_vals").split()
+cookie_releases = os.getenv("cookie_releases").split(";")[:-1]
+cookie_names = os.getenv("cookie_names").split(";")[:-1]
+cookie_vals = os.getenv("cookie_vals").split(";")[:-1]
 url = os.getenv("url")
 
 print(run_health_check())
