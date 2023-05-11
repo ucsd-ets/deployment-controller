@@ -68,3 +68,4 @@ jobs:
           context: health-check/
           push: ${{ github.event_name != 'pull_request' }}
           tags: deployment-controller-health-check:latest
+          labels: ${{ steps.meta.outputs.labels }}
